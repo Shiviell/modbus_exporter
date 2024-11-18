@@ -183,18 +183,21 @@ func scrapeMetrics(definitions []config.MetricDef, c modbus.Client) ([]metric, e
 		// for function code and register address
 		modFunction, err := strconv.ParseUint(fmt.Sprint(definition.Address)[0:1], 10, 64)
 		if err != nil {
-			return []metric{}, fmt.Errorf("modbus function code parcing failed: %v", modFunction)
+			fmt.Errorf("modbus function code parcing failed: %v", modFunction)
+			continue // Skip this metric and move to the next one
 		}
 
 		// And here we are parcing Modbus Address from config file
 		// for register address
 		modAddress, err := strconv.ParseUint(fmt.Sprint(definition.Address)[1:], 10, 64)
 		if err != nil {
-			return []metric{}, fmt.Errorf("modbus register address parcing failed  %v", modAddress)
+			fmt.Errorf("modbus register address parcing failed  %v", modAddress)
+			continue // Skip this metric and move to the next one
 		}
 
 		if modAddress > 65535 {
-			return []metric{}, fmt.Errorf("modbus register address is out of range: %v", definition.Address)
+			fmt.Errorf("modbus register address is out of range: %v", definition.Address)
+			continue // Skip this metric and move to the next one
 		}
 
 		switch modFunction {
@@ -207,17 +210,19 @@ func scrapeMetrics(definitions []config.MetricDef, c modbus.Client) ([]metric, e
 		case 4:
 			f = c.ReadInputRegisters
 		default:
-			return []metric{}, fmt.Errorf(
+			fmt.Errorf(
 				"metric: '%v', address '%v': metric address should be within the range of 10 - 465535."+
 					"'1xxxxx' for read coil / digital output, '2xxxxx' for read discrete inputs / digital input,"+
 					"'3xxxxx' read holding registers / analog output, '4xxxxx' read input registers / analog input",
 				definition.Name, definition.Address,
 			)
+			continue // Skip this metric and move to the next one
 		}
 
 		m, err := scrapeMetric(definition, f, modAddress)
 		if err != nil {
-			return []metric{}, fmt.Errorf("metric '%v', address '%v': %v", definition.Name, definition.Address, err)
+			fmt.Errorf("metric '%v', address '%v': %v", definition.Name, definition.Address, err)
+			continue // Skip this metric and move to the next one
 		}
 
 		metrics = append(metrics, m)
